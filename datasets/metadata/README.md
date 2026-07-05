@@ -20,7 +20,7 @@ Este diretório armazena arquivos de metadados auxiliares sobre o dataset de ava
     "app": null,
     "date_acquired": "2026-07-01",
     "license": "proprietary",
-    "operator": "equipe-verifood"
+    "operator": "equipe-PixelAudit"
   },
   "ai_generated/sample_sd_001.jpg": {
     "model": "stable-diffusion-xl-base-1.0",
