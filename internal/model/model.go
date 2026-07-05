@@ -39,6 +39,24 @@ type FrequencyResult struct {
 	LowFreqRatio  float64 `json:"low_freq_ratio"`
 }
 
+// StatisticalResult representa a análise estatística de pixels para detecção de
+// imagens geradas por IA, sem necessidade de modelo ONNX.
+type StatisticalResult struct {
+	// NoiseCoV é o coeficiente de variação do ruído por bloco.
+	// Imagens de câmera real: CoV alto (ruído irregular). IA: CoV baixo (ruído uniforme).
+	NoiseCoV float64 `json:"noise_cov"`
+	// NoiseCorrelation é a correlação de Pearson entre o ruído dos canais R e B.
+	// IA sintetiza os canais em conjunto → correlação alta. Câmera real: baixa.
+	NoiseCorrelation float64 `json:"noise_correlation"`
+	// FlatRegionSmooth é o desvio padrão de pixel em regiões planas (escala 0-255).
+	// IA: pele/fundo sinteticamente lisos → valor baixo. Real: grão de câmera → valor alto.
+	FlatRegionSmooth float64 `json:"flat_region_smooth"`
+	// Confidence é a pontuação final combinada (0 = autêntico, 1 = IA detectada).
+	Confidence    float64  `json:"confidence"`
+	IsAISuspected bool     `json:"is_ai_suspected"`
+	Signals       []string `json:"signals,omitempty"`
+}
+
 // VerificationResult é o resultado consolidado devolvido ao cliente.
 type VerificationResult struct {
 	ID               string                 `json:"id"`
@@ -56,12 +74,13 @@ type VerificationResult struct {
 	Timestamp        time.Time              `json:"timestamp"`
 }
 
-// AnalysisBundle empacota os 4 sub-resultados.
+// AnalysisBundle empacota os sub-resultados de todos os módulos.
 type AnalysisBundle struct {
-	Metadata  *MetadataResult  `json:"metadata,omitempty"`
-	ELA       *ELAResult       `json:"ela,omitempty"`
-	AI        *AIResult        `json:"ai,omitempty"`
-	Frequency *FrequencyResult `json:"frequency,omitempty"`
+	Metadata    *MetadataResult    `json:"metadata,omitempty"`
+	ELA         *ELAResult         `json:"ela,omitempty"`
+	AI          *AIResult          `json:"ai,omitempty"`
+	Frequency   *FrequencyResult   `json:"frequency,omitempty"`
+	Statistical *StatisticalResult `json:"statistical,omitempty"`
 }
 
 // VerificationRequestedEvent é publicado em `verify.requested`.
