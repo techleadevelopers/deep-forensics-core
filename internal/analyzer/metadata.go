@@ -33,9 +33,10 @@ func (m *MetadataAnalyzer) Analyze(image []byte) (*model.MetadataResult, error) 
 	res := &model.MetadataResult{Confidence: 0.1}
 	rawExif, err := exif.SearchAndExtractExif(image)
 	if err != nil {
-		// Ausência total de EXIF é sinal fraco de manipulação/screenshot.
+		// Ausência de EXIF é sinal moderado de geração por IA ou screenshot:
+		// câmeras reais sempre embute metadados; ferramentas de IA geralmente não.
 		res.Reasons = append(res.Reasons, "no_exif_found")
-		res.Confidence = 0.35
+		res.Confidence = 0.52
 		return res, nil
 	}
 
