@@ -1,4 +1,4 @@
-// Package evaluation implementa o harness de métricas do VeriFood.
+// Package evaluation implementa o harness de métricas do PixelAudit.
 package evaluation
 
 import (
