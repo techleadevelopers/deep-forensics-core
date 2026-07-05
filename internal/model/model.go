@@ -42,6 +42,7 @@ type FrequencyResult struct {
 // VerificationResult é o resultado consolidado devolvido ao cliente.
 type VerificationResult struct {
 	ID               string                 `json:"id"`
+	Status           string                 `json:"status,omitempty"`
 	Authentic        bool                   `json:"authentic"`
 	Confidence       float64                `json:"confidence"`
 	Recommendation   string                 `json:"recommendation"`

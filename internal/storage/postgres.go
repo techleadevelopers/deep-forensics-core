@@ -15,6 +15,25 @@ import (
 // Postgres é o wrapper em cima do pgxpool.
 type Postgres struct{ Pool *pgxpool.Pool }
 
+type PublicSignup struct {
+	ID        string    `json:"id"`
+	Email     string    `json:"email"`
+	FullName  string    `json:"full_name"`
+	Company   string    `json:"company,omitempty"`
+	Source    string    `json:"source"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type AuthenticatedUser struct {
+	ID             string `json:"id"`
+	TenantID       string `json:"tenant_id,omitempty"`
+	Email          string `json:"email"`
+	FullName       string `json:"full_name"`
+	Role           string `json:"role"`
+	Plan           string `json:"plan"`
+	LifetimeAccess bool   `json:"lifetime_access"`
+}
+
 // NewPostgres inicializa o pool e valida a conexão.
 func NewPostgres(ctx context.Context, url string) (*Postgres, error) {
 	cfg, err := pgxpool.ParseConfig(url)
@@ -52,6 +71,7 @@ func (p *Postgres) SaveResult(ctx context.Context, id string, res *model.Verific
 	analysis, _ := json.Marshal(res.Analysis)
 	versions, _ := json.Marshal(res.ModelVersions)
 	scores, _ := json.Marshal(res.Scores)
+	res.Status = "completed"
 	_, err := p.Pool.Exec(ctx, `
 		INSERT INTO verifications (id, status, authentic, confidence, recommendation, priority,
 		                          analysis, model_versions, processing_time_ms, completed_at, created_at)
@@ -72,11 +92,29 @@ func (p *Postgres) SaveResult(ctx context.Context, id string, res *model.Verific
 	return err
 }
 
+// MarkFailed marca uma verificação assíncrona local como failed.
+func (p *Postgres) MarkFailed(ctx context.Context, id string) error {
+	_, err := p.Pool.Exec(ctx, `
+		UPDATE verifications
+		SET status = 'failed', completed_at = now()
+		WHERE id = $1`,
+		id)
+	return err
+}
+
 // GetResult devolve o resultado por id.
 func (p *Postgres) GetResult(ctx context.Context, id string) (*model.VerificationResult, error) {
 	row := p.Pool.QueryRow(ctx, `
-		SELECT id, status, authentic, confidence, recommendation, priority,
-		       analysis, model_versions, processing_time_ms, completed_at
+		SELECT id,
+		       status,
+		       COALESCE(authentic, false),
+		       COALESCE(confidence, 0),
+		       COALESCE(recommendation, ''),
+		       COALESCE(priority, ''),
+		       COALESCE(analysis, '{}'::jsonb),
+		       COALESCE(model_versions, '{}'::jsonb),
+		       COALESCE(processing_time_ms, 0),
+		       completed_at
 		FROM verifications WHERE id = $1`, id)
 	var (
 		res       model.VerificationResult
@@ -94,10 +132,75 @@ func (p *Postgres) GetResult(ctx context.Context, id string) (*model.Verificatio
 		return nil, err
 	}
 	res.ID = id
+	res.Status = status
 	if completed != nil {
 		res.Timestamp = *completed
 	}
 	_ = json.Unmarshal(analysis, &res.Analysis)
 	_ = json.Unmarshal(versions, &res.ModelVersions)
 	return &res, nil
+}
+
+func (p *Postgres) UpsertPublicSignup(ctx context.Context, email, fullName, company, source string) (*PublicSignup, error) {
+	if source == "" {
+		source = "upload_image"
+	}
+	row := p.Pool.QueryRow(ctx, `
+		INSERT INTO public_signups (email, full_name, company, source)
+		VALUES ($1, $2, NULLIF($3, ''), $4)
+		ON CONFLICT (email_normalized) DO UPDATE SET
+			full_name = EXCLUDED.full_name,
+			company = EXCLUDED.company,
+			source = EXCLUDED.source,
+			updated_at = now()
+		RETURNING id::text, email, full_name, COALESCE(company, ''), source, created_at`,
+		email, fullName, company, source)
+
+	var signup PublicSignup
+	if err := row.Scan(&signup.ID, &signup.Email, &signup.FullName, &signup.Company, &signup.Source, &signup.CreatedAt); err != nil {
+		return nil, err
+	}
+	return &signup, nil
+}
+
+func (p *Postgres) MarkWelcomeEmailSent(ctx context.Context, id string) error {
+	_, err := p.Pool.Exec(ctx, `
+		UPDATE public_signups
+		SET welcome_email_sent_at = now(), updated_at = now()
+		WHERE id = $1`,
+		id)
+	return err
+}
+
+func (p *Postgres) AuthenticateUser(ctx context.Context, email, password string) (*AuthenticatedUser, error) {
+	row := p.Pool.QueryRow(ctx, `
+		SELECT id::text,
+		       COALESCE(tenant_id::text, ''),
+		       email,
+		       full_name,
+		       role,
+		       plan,
+		       lifetime_access
+		FROM users
+		WHERE email_normalized = lower($1)
+		  AND password_hash = crypt($2, password_hash)
+		LIMIT 1`,
+		email, password)
+
+	var user AuthenticatedUser
+	if err := row.Scan(
+		&user.ID,
+		&user.TenantID,
+		&user.Email,
+		&user.FullName,
+		&user.Role,
+		&user.Plan,
+		&user.LifetimeAccess,
+	); err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &user, nil
 }

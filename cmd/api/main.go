@@ -11,12 +11,14 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/nats-io/nats.go"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
 	"github.com/PixelAudit/PixelAudit/internal/analyzer"
 	"github.com/PixelAudit/PixelAudit/internal/api"
 	"github.com/PixelAudit/PixelAudit/internal/config"
+	"github.com/PixelAudit/PixelAudit/internal/email"
 	"github.com/PixelAudit/PixelAudit/internal/orchestrator"
 	"github.com/PixelAudit/PixelAudit/internal/queue"
 	"github.com/PixelAudit/PixelAudit/internal/storage"
@@ -43,22 +45,32 @@ func main() {
 	}
 	defer db.Close()
 
-	redis, err := storage.NewRedis(rootCtx, cfg.RedisURL)
-	if err != nil {
-		log.Fatal().Err(err).Msg("redis")
+	var redis *storage.Redis
+	if cfg.RedisURL != "" {
+		redis, err = storage.NewRedis(rootCtx, cfg.RedisURL)
+		if err != nil {
+			log.Fatal().Err(err).Msg("redis")
+		}
+		defer redis.Close()
+	} else {
+		log.Warn().Msg("redis disabled; rate limit and cache disabled")
 	}
-	defer redis.Close()
 
 	s3, err := storage.NewS3(rootCtx, cfg)
 	if err != nil {
 		log.Fatal().Err(err).Msg("s3")
 	}
 
-	nc, err := queue.NewNATS(cfg.NATSURL)
-	if err != nil {
-		log.Fatal().Err(err).Msg("nats")
+	var nc *nats.Conn
+	if cfg.NATSURL != "" {
+		nc, err = queue.NewNATS(cfg.NATSURL)
+		if err != nil {
+			log.Fatal().Err(err).Msg("nats")
+		}
+		defer nc.Close()
+	} else {
+		log.Warn().Msg("nats disabled; async webhook queue disabled")
 	}
-	defer nc.Close()
 
 	// Analyzers
 	meta := analyzer.NewMetadataAnalyzer()
@@ -67,6 +79,10 @@ func main() {
 	ai, err := analyzer.NewAIDetector(cfg.ONNXModelPath)
 	if err != nil {
 		log.Warn().Err(err).Msg("AI detector disabled (model not loaded)")
+	}
+	mailer := email.New(cfg)
+	if !mailer.Configured() {
+		log.Warn().Msg("smtp disabled; welcome emails will be skipped")
 	}
 
 	verifier := orchestrator.New(
@@ -91,9 +107,9 @@ func main() {
 	r.Use(cors.New(cors.Config{
 		AllowOrigins: []string{"*"},
 		AllowMethods: []string{"GET", "POST", "OPTIONS"},
-		AllowHeaders: []string{"Authorization", "Content-Type", "Idempotency-Key"},
+		AllowHeaders: []string{"Authorization", "Content-Type", "Idempotency-Key", "X-Verify-Plan"},
 	}))
-	api.RegisterRoutes(r, verifier, db, redis)
+	api.RegisterRoutes(r, verifier, db, redis, mailer)
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,

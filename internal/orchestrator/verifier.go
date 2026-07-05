@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"image"
 	_ "image/gif"
 	_ "image/jpeg"
@@ -71,32 +72,87 @@ type VerifyRequest struct {
 
 func (v *Verifier) VerifySync(ctx context.Context, req VerifyRequest) (*model.VerificationResult, string, error) {
 	id := "ver_" + ulid.Make().String()
+	res, err := v.verifyWithID(ctx, id, req)
+	return res, id, err
+}
+
+func (v *Verifier) StartLocalAsync(ctx context.Context, id string, req VerifyRequest) (string, error) {
+	if id == "" {
+		id = "ver_" + ulid.Make().String()
+	}
+	imageCopy := append([]byte(nil), req.Image...)
 	sha := imageSHA256(req.Image)
 	plan := NormalizePlan(req.Plan)
 	profile := PipelineProfile(plan)
 
 	if cached := v.cachedResult(ctx, req.TenantID, sha, profile); cached != nil {
-		return cached, cached.ID, nil
+		clone := *cached
+		clone.ID = id
+		clone.Timestamp = time.Now().UTC()
+		if err := v.db.SaveResult(ctx, id, &clone); err != nil {
+			return "", err
+		}
+		return id, nil
 	}
 
 	key := originalKey(req.TenantID, sha)
 	if _, err := v.s3.Put(ctx, key, req.Image, "image/jpeg"); err != nil {
-		return nil, id, err
+		return "", err
+	}
+	if err := v.db.CreatePending(ctx, id, req.TenantID, req.OrderID, sha); err != nil {
+		return "", err
 	}
 
+	go func() {
+		bgCtx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+		defer cancel()
+
+		bgReq := req
+		bgReq.Image = imageCopy
+		res, err := v.verifyWithID(bgCtx, id, bgReq)
+		if err != nil {
+			_ = v.db.MarkFailed(context.Background(), id)
+			return
+		}
+		res.ID = id
+		res.Timestamp = time.Now().UTC()
+	}()
+
+	return id, nil
+}
+
+func (v *Verifier) verifyWithID(ctx context.Context, id string, req VerifyRequest) (*model.VerificationResult, error) {
+	sha := imageSHA256(req.Image)
+	plan := NormalizePlan(req.Plan)
+	profile := PipelineProfile(plan)
+
+	if cached := v.cachedResult(ctx, req.TenantID, sha, profile); cached != nil {
+		return cached, nil
+	}
+
+	key := originalKey(req.TenantID, sha)
+	if _, err := v.s3.Put(ctx, key, req.Image, "image/jpeg"); err != nil {
+		return nil, err
+	}
 	res, err := v.runPipeline(ctx, id, req.TenantID, sha, plan, profile, req.Image)
 	if err != nil {
-		return nil, id, err
+		return nil, err
 	}
 	res.ID = id
 	res.Timestamp = time.Now().UTC()
 
-	_ = v.db.SaveResult(ctx, id, res)
+	if err := v.db.SaveResult(ctx, id, res); err != nil {
+		return nil, err
+	}
 	v.cacheResult(ctx, req.TenantID, sha, profile, res)
-	return res, id, nil
+	return res, nil
 }
 
 func (v *Verifier) EnqueueAsync(ctx context.Context, req VerifyRequest) (string, error) {
+	if v.nc == nil {
+		return "", errors.New("async queue disabled: configure NATS_URL to use webhook_url")
+	}
+
 	id := "ver_" + ulid.Make().String()
 	sha := imageSHA256(req.Image)
 	plan := NormalizePlan(req.Plan)

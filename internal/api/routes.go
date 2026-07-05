@@ -13,25 +13,112 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 
+	"github.com/PixelAudit/PixelAudit/internal/email"
 	"github.com/PixelAudit/PixelAudit/internal/orchestrator"
 	"github.com/PixelAudit/PixelAudit/internal/storage"
 )
 
 // RegisterRoutes registra todos os endpoints /v1/*.
-func RegisterRoutes(r *gin.Engine, v *orchestrator.Verifier, db *storage.Postgres, redis *storage.Redis) {
+func RegisterRoutes(r *gin.Engine, v *orchestrator.Verifier, db *storage.Postgres, redis *storage.Redis, mailer *email.Mailer) {
 	r.GET("/health", func(c *gin.Context) { c.JSON(200, gin.H{"status": "ok", "ts": time.Now().Unix()}) })
 	r.GET("/metrics", gin.WrapH(promHandler()))
 
-	v1 := r.Group("/v1", AuthMiddleware())
-	v1.POST("/verify", handleVerify(v, redis))
-	v1.GET("/verify/:id", handleGetResult(db))
+	public := r.Group("/v1")
+	public.POST("/register", handleRegister(db, mailer))
+	public.POST("/login", handleLogin(db))
+
+	protected := r.Group("/v1", AuthMiddleware())
+	protected.POST("/verify", handleVerify(v, redis))
+	protected.GET("/verify/:id", handleGetResult(db))
+}
+
+func handleLogin(db *storage.Postgres) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var body struct {
+			Email    string `json:"email"`
+			Password string `json:"password"`
+		}
+		if err := c.BindJSON(&body); err != nil {
+			problem(c, 400, "invalid-json", err.Error())
+			return
+		}
+		body.Email = strings.TrimSpace(strings.ToLower(body.Email))
+		if body.Email == "" || body.Password == "" {
+			problem(c, 400, "missing-credentials", "email and password are required")
+			return
+		}
+
+		user, err := db.AuthenticateUser(c.Request.Context(), body.Email, body.Password)
+		if err != nil {
+			problem(c, 500, "login-failed", err.Error())
+			return
+		}
+		if user == nil {
+			problem(c, 401, "invalid-credentials", "invalid email or password")
+			return
+		}
+
+		c.JSON(200, gin.H{
+			"user": user,
+		})
+	}
+}
+
+func handleRegister(db *storage.Postgres, mailer *email.Mailer) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var body struct {
+			FullName string `json:"full_name"`
+			Email    string `json:"email"`
+			Company  string `json:"company"`
+			Source   string `json:"source"`
+		}
+		if err := c.BindJSON(&body); err != nil {
+			problem(c, 400, "invalid-json", err.Error())
+			return
+		}
+		body.FullName = strings.TrimSpace(body.FullName)
+		body.Email = strings.TrimSpace(strings.ToLower(body.Email))
+		body.Company = strings.TrimSpace(body.Company)
+		if body.FullName == "" {
+			problem(c, 400, "missing-name", "full_name is required")
+			return
+		}
+		if !strings.Contains(body.Email, "@") || !strings.Contains(body.Email, ".") {
+			problem(c, 400, "invalid-email", "valid email is required")
+			return
+		}
+
+		signup, err := db.UpsertPublicSignup(c.Request.Context(), body.Email, body.FullName, body.Company, body.Source)
+		if err != nil {
+			problem(c, 500, "signup-failed", err.Error())
+			return
+		}
+
+		emailSent := false
+		if mailer != nil {
+			if err := mailer.SendWelcome(signup.Email, signup.FullName); err != nil {
+				log.Warn().Err(err).Str("signup_id", signup.ID).Msg("welcome email failed")
+			} else if mailer.Configured() {
+				emailSent = true
+				_ = db.MarkWelcomeEmailSent(c.Request.Context(), signup.ID)
+			}
+		}
+
+		c.JSON(201, gin.H{
+			"id":         signup.ID,
+			"email":      signup.Email,
+			"full_name":  signup.FullName,
+			"company":    signup.Company,
+			"email_sent": emailSent,
+		})
+	}
 }
 
 // handleVerify aceita multipart (image + order_id + webhook_url) ou JSON base64.
 func handleVerify(v *orchestrator.Verifier, redis *storage.Redis) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tenantID := c.GetString("tenant_id")
-		ctx, cancel := context.WithTimeout(c.Request.Context(), 800*time.Millisecond)
+		ctx, cancel := context.WithTimeout(c.Request.Context(), 900*time.Millisecond)
 		defer cancel()
 
 		var img []byte
@@ -106,6 +193,10 @@ func handleVerify(v *orchestrator.Verifier, redis *storage.Redis) gin.HandlerFun
 		res, id, err := v.VerifySync(ctx, req)
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) {
+				if _, enqueueErr := v.StartLocalAsync(c.Request.Context(), id, req); enqueueErr != nil {
+					problem(c, 500, "local-queue-failed", enqueueErr.Error())
+					return
+				}
 				c.JSON(202, gin.H{"id": id, "status": "pending", "detail": "processing exceeded sync window"})
 				return
 			}
@@ -164,6 +255,10 @@ func LoggerMiddleware() gin.HandlerFunc {
 // RateLimitMiddleware aplica sliding window de N req/min por tenant.
 func RateLimitMiddleware(r *storage.Redis, perMin int) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if r == nil {
+			c.Next()
+			return
+		}
 		tenantID := c.GetString("tenant_id")
 		if tenantID == "" {
 			c.Next()
