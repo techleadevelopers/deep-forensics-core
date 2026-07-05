@@ -51,7 +51,7 @@ func NewAIDetector(modelPath string) (*AIDetector, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &AIDetector{session: session, version: "gan_detector_v1.2.0"}, nil
+	return &AIDetector{session: session, modelPath: modelPath, version: "gan_detector_v1.2.0"}, nil
 }
 
 // Detect roda a inferência e retorna confidence 0..1 (1 = altíssima chance de IA).
@@ -73,7 +73,7 @@ func (d *AIDetector) Detect(imgBytes []byte) (*model.AIResult, error) {
 		return nil, err
 	}
 	// Recria session bindings (o session guarda seus tensores)
-	sess, err := ort.NewAdvancedSession(d.session.Path(),
+	sess, err := ort.NewAdvancedSession(d.modelPath,
 		[]string{"input"}, []string{"output"},
 		[]ort.Value{inputT}, []ort.Value{outputT}, nil)
 	if err != nil {
