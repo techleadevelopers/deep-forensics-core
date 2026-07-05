@@ -1,0 +1,34 @@
+# manifest.jsonl — dataset de avaliação VeriFood
+# Formato: uma linha JSON por imagem.
+# Campos obrigatórios: path (relativo a este arquivo), label, category
+# Labels válidos: authentic | manipulated | ai_generated | partial
+#
+# Para adicionar imagens: coloque os arquivos nos subdiretórios e adicione
+# uma linha abaixo seguindo o padrão existente.
+#
+# Exemplo de como popular este dataset:
+#   - real/          → imagens originais de câmera (label: authentic)
+#   - manipulated/   → imagens editadas (label: manipulated)
+#   - ai_generated/  → imagens criadas por IA (label: ai_generated)
+#
+# NOTA: As entradas abaixo são exemplos com paths placeholder.
+# Adicione imagens reais antes de executar o eval.
+#
+{"path":"real/sample_camera_001.jpg","label":"authentic","category":"camera_original","notes":"foto original iPhone 14 sem edição"}
+{"path":"real/sample_camera_002.jpg","label":"authentic","category":"camera_original","notes":"foto original Samsung S23 sem edição"}
+{"path":"real/sample_whatsapp_001.jpg","label":"authentic","category":"whatsapp_compressed","notes":"foto autêntica após compressão WhatsApp"}
+{"path":"real/sample_instagram_001.jpg","label":"authentic","category":"instagram_compressed","notes":"foto autêntica após compressão Instagram"}
+{"path":"real/sample_exif_stripped_001.jpg","label":"authentic","category":"exif_stripped","notes":"foto autêntica com EXIF removido via exiftool"}
+{"path":"real/sample_resized_001.jpg","label":"authentic","category":"resized","notes":"foto autêntica redimensionada para 800x600"}
+{"path":"real/sample_multicomp_001.jpg","label":"authentic","category":"multi_recompressed","notes":"foto autêntica com 3 recompressões JPEG consecutivas"}
+{"path":"manipulated/sample_photoshop_001.jpg","label":"manipulated","category":"photoshop_edit","notes":"alimento com inseto inserido via Photoshop stamp tool"}
+{"path":"manipulated/sample_photoshop_002.jpg","label":"manipulated","category":"photoshop_edit","notes":"comida editada para parecer deteriorada (Photoshop Hue/Saturation)"}
+{"path":"manipulated/sample_gimp_001.jpg","label":"manipulated","category":"gimp_edit","notes":"clone stamp no GIMP para adicionar objeto estranho"}
+{"path":"manipulated/sample_inpaint_001.jpg","label":"partial","category":"partial_inpainting","notes":"inpainting de região 20% via Stable Diffusion"}
+{"path":"manipulated/sample_gen_fill_001.jpg","label":"partial","category":"partial_generative_fill","notes":"Photoshop Generative Fill em 30% da imagem"}
+{"path":"manipulated/sample_multicomp_manipulated_001.jpg","label":"manipulated","category":"multi_recompressed","notes":"imagem editada + 2 recompressões para mascarar ELA"}
+{"path":"ai_generated/sample_sd_001.jpg","label":"ai_generated","category":"ai_stable_diffusion","notes":"gerada por Stable Diffusion XL, prompt: food photography"}
+{"path":"ai_generated/sample_sd_002.jpg","label":"ai_generated","category":"ai_stable_diffusion","notes":"img2img SD: foto real transformada em comida mofada"}
+{"path":"ai_generated/sample_midjourney_001.jpg","label":"ai_generated","category":"ai_midjourney","notes":"gerada por Midjourney v6, sem pós-processamento"}
+{"path":"ai_generated/sample_dalle_001.jpg","label":"ai_generated","category":"ai_dalle","notes":"gerada por DALL-E 3 via API"}
+{"path":"ai_generated/sample_flux_001.jpg","label":"ai_generated","category":"ai_flux","notes":"gerada por Flux.1, alta resolução"}
