@@ -13,6 +13,6 @@ func NewNATS(url string) (*nats.Conn, error) {
 		nats.MaxReconnects(-1),
 		nats.ReconnectWait(2*time.Second),
 		nats.Timeout(5*time.Second),
-		nats.Name("verifood"),
+		nats.Name("PixelAudit"),
 	)
 }
