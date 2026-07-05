@@ -15,9 +15,9 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/oklog/ulid/v2"
 
-	"github.com/verifood/verifood/internal/analyzer"
-	"github.com/verifood/verifood/internal/model"
-	"github.com/verifood/verifood/internal/storage"
+	"github.com/PixelAudit/PixelAudit/internal/analyzer"
+	"github.com/PixelAudit/PixelAudit/internal/model"
+	"github.com/PixelAudit/PixelAudit/internal/storage"
 )
 
 // Verifier orchestrates upload, cache/dedup, analysis, persistence, and queueing.
