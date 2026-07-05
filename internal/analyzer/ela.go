@@ -7,7 +7,7 @@ import (
 	"image/jpeg"
 	"image/png"
 
-	"github.com/verifood/verifood/internal/model"
+	"github.com/PixelAudit/PixelAudit/internal/model"
 )
 
 // ELAAnalyzer implementa Error Level Analysis: recomprime a imagem em JPEG q=90
