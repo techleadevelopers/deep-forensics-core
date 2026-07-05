@@ -8,9 +8,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/verifood/verifood/internal/analyzer"
-	"github.com/verifood/verifood/internal/dataset"
-	"github.com/verifood/verifood/internal/model"
+	"github.com/PixelAudit/PixelAudit/internal/analyzer"
+	"github.com/PixelAudit/PixelAudit/internal/dataset"
+	"github.com/PixelAudit/PixelAudit/internal/model"
 )
 
 // PredictionResult é o resultado do pipeline para uma única imagem.
