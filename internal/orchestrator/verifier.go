@@ -27,6 +27,7 @@ type Verifier struct {
 	ela       *analyzer.ELAAnalyzer
 	ai        *analyzer.AIDetector
 	freq      *analyzer.FrequencyAnalyzer
+	stat      *analyzer.StatisticalAnalyzer
 	fusion    *analyzer.Fusion
 	db        *storage.Postgres
 	s3        *storage.S3
@@ -41,6 +42,7 @@ func New(
 	ela *analyzer.ELAAnalyzer,
 	ai *analyzer.AIDetector,
 	freq *analyzer.FrequencyAnalyzer,
+	stat *analyzer.StatisticalAnalyzer,
 	db *storage.Postgres,
 	s3 *storage.S3,
 	redis *storage.Redis,
@@ -53,6 +55,7 @@ func New(
 		ela:       ela,
 		ai:        ai,
 		freq:      freq,
+		stat:      stat,
 		fusion:    analyzer.NewFusion(analyzer.DefaultWeights),
 		db:        db,
 		s3:        s3,
@@ -226,22 +229,30 @@ func (v *Verifier) ProcessAsyncEvent(ctx context.Context, evt model.Verification
 func (v *Verifier) runPipeline(ctx context.Context, verificationID, tenantID, sha, plan, profile string, img []byte) (*model.VerificationResult, error) {
 	precheck := imagePrecheck(img)
 
+	// Stage 1: metadata, ELA, and statistical run in parallel for ALL plans.
+	// Statistical analysis is the primary AI-detection fallback when ONNX is absent.
 	var metaRes *model.MetadataResult
 	var elaRes *model.ELAResult
-	done := make(chan error, 2)
+	var statRes *model.StatisticalResult
+	stage1 := make(chan error, 3)
 	go func() {
 		var err error
 		metaRes, err = v.metadata(ctx, sha, img)
-		done <- err
+		stage1 <- err
 	}()
 	go func() {
 		var err error
 		elaRes, err = v.elaResult(ctx, sha, img)
-		done <- err
+		stage1 <- err
 	}()
-	for i := 0; i < 2; i++ {
+	go func() {
+		var err error
+		statRes, err = v.statResult(ctx, sha, img)
+		stage1 <- err
+	}()
+	for i := 0; i < 3; i++ {
 		select {
-		case err := <-done:
+		case err := <-stage1:
 			if err != nil {
 				return nil, err
 			}
@@ -257,6 +268,7 @@ func (v *Verifier) runPipeline(ctx context.Context, verificationID, tenantID, sh
 		}
 	}
 
+	// Stage 2: frequency FFT + ONNX inference — only for paid full-profile plans.
 	var aiRes *model.AIResult
 	var freqRes *model.FrequencyResult
 	if profile == ProfileFull {
@@ -273,7 +285,7 @@ func (v *Verifier) runPipeline(ctx context.Context, verificationID, tenantID, sh
 		}
 	}
 
-	res := v.fusion.Combine(metaRes, elaRes, aiRes, freqRes)
+	res := v.fusion.Combine(metaRes, elaRes, aiRes, freqRes, statRes)
 	res.Metadata = precheck
 	res.Metadata["plan"] = plan
 	res.Metadata["profile"] = profile
@@ -321,6 +333,21 @@ func (v *Verifier) frequency(ctx context.Context, sha string, img []byte) (*mode
 		}
 	}
 	res, err := v.freq.Analyze(img)
+	if err == nil && v.redis != nil {
+		_ = v.redis.SetJSON(ctx, key, res, v.stageTTL)
+	}
+	return res, err
+}
+
+func (v *Verifier) statResult(ctx context.Context, sha string, img []byte) (*model.StatisticalResult, error) {
+	key := storage.StageCacheKey("statistical", sha, "stat_v1.0", "n256")
+	var cached model.StatisticalResult
+	if v.redis != nil {
+		if ok, err := v.redis.GetJSON(ctx, key, &cached); err == nil && ok {
+			return &cached, nil
+		}
+	}
+	res, err := v.stat.Analyze(img)
 	if err == nil && v.redis != nil {
 		_ = v.redis.SetJSON(ctx, key, res, v.stageTTL)
 	}
