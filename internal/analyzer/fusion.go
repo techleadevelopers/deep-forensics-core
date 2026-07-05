@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/verifood/verifood/internal/model"
+	"github.com/PixelAudit/PixelAudit/internal/model"
 )
 
 // Weights define os pesos aplicados a cada camada de análise.
