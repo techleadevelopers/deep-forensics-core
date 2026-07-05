@@ -7,52 +7,88 @@ import (
 	"github.com/PixelAudit/PixelAudit/internal/model"
 )
 
-// Weights define os pesos aplicados a cada camada de análise.
+// Weights define os pesos de cada módulo de análise.
+// Não precisam somar 1.0 — Combine normaliza pelo peso ativo total.
 type Weights struct {
-	Metadata  float64
-	ELA       float64
-	AI        float64
-	Frequency float64
+	Metadata    float64
+	ELA         float64
+	AI          float64
+	Frequency   float64
+	Statistical float64
 }
 
-// DefaultWeights corresponde ao esquema oficial do produto.
+// DefaultWeights são os pesos oficiais do produto.
+// O módulo Statistical sempre roda (independe de ONNX/ProfileFull),
+// por isso tem peso expressivo mesmo sem o detector de IA.
 var DefaultWeights = Weights{
-	Metadata:  0.25,
-	ELA:       0.25,
-	AI:        0.35,
-	Frequency: 0.15,
+	Metadata:    0.20,
+	ELA:         0.15,
+	AI:          0.35,
+	Frequency:   0.15,
+	Statistical: 0.25,
 }
 
-// Fusion combina os 4 sub-resultados em um veredito final.
+// Fusion combina os sub-resultados em um veredito final.
 type Fusion struct{ w Weights }
 
 // NewFusion cria a fusão com pesos customizados.
 func NewFusion(w Weights) *Fusion { return &Fusion{w: w} }
 
 // Combine gera o VerificationResult final.
-func (f *Fusion) Combine(m *model.MetadataResult, e *model.ELAResult, a *model.AIResult, fr *model.FrequencyResult) *model.VerificationResult {
+// Módulos ausentes (nil) são excluídos e os pesos são renormalizados —
+// assim um detector de IA indisponível não "dilui" os demais sinais.
+func (f *Fusion) Combine(
+	m *model.MetadataResult,
+	e *model.ELAResult,
+	a *model.AIResult,
+	fr *model.FrequencyResult,
+	st *model.StatisticalResult,
+) *model.VerificationResult {
 	scores := map[string]float64{}
-	total := 0.0
+	raw := 0.0
+	activeWeight := 0.0
 
 	if m != nil {
-		s := m.Confidence * f.w.Metadata
+		w := f.w.Metadata
+		s := m.Confidence * w
 		scores["metadata"] = s
-		total += s
+		raw += s
+		activeWeight += w
 	}
 	if e != nil {
-		s := e.Confidence * f.w.ELA
+		w := f.w.ELA
+		s := e.Confidence * w
 		scores["ela"] = s
-		total += s
+		raw += s
+		activeWeight += w
 	}
 	if a != nil {
-		s := a.Confidence * f.w.AI
+		w := f.w.AI
+		s := a.Confidence * w
 		scores["ai"] = s
-		total += s
+		raw += s
+		activeWeight += w
 	}
 	if fr != nil {
-		s := fr.Confidence * f.w.Frequency
+		w := f.w.Frequency
+		s := fr.Confidence * w
 		scores["frequency"] = s
-		total += s
+		raw += s
+		activeWeight += w
+	}
+	if st != nil {
+		w := f.w.Statistical
+		s := st.Confidence * w
+		scores["statistical"] = s
+		raw += s
+		activeWeight += w
+	}
+
+	// Normalize so the threshold of 0.5 is always valid regardless of which
+	// modules are present.
+	total := 0.0
+	if activeWeight > 0 {
+		total = raw / activeWeight
 	}
 
 	authentic := total < 0.5
@@ -62,18 +98,20 @@ func (f *Fusion) Combine(m *model.MetadataResult, e *model.ELAResult, a *model.A
 	if a != nil {
 		versions["ai"] = a.ModelVersion
 	}
+	versions["statistical"] = "stat_v1.0"
 
 	return &model.VerificationResult{
 		Authentic:      authentic,
 		Confidence:     roundTo(total*100, 2),
 		Recommendation: rec,
 		Priority:       prio,
-		Summary:        summarize(authentic, total, a, e),
+		Summary:        summarize(authentic, total, a, e, st),
 		Analysis: model.AnalysisBundle{
-			Metadata:  m,
-			ELA:       e,
-			AI:        a,
-			Frequency: fr,
+			Metadata:    m,
+			ELA:         e,
+			AI:          a,
+			Frequency:   fr,
+			Statistical: st,
 		},
 		Scores:        scores,
 		ModelVersions: versions,
@@ -92,20 +130,32 @@ func recommendation(score float64) (string, string) {
 	}
 }
 
-func summarize(authentic bool, score float64, ai *model.AIResult, ela *model.ELAResult) string {
+func summarize(authentic bool, score float64, ai *model.AIResult, ela *model.ELAResult, st *model.StatisticalResult) string {
+	pct := score * 100
 	if authentic {
-		return fmt.Sprintf("Imagem parece autêntica. Score de manipulação: %.1f%%.", score*100)
+		return fmt.Sprintf("Imagem parece autêntica. Score de manipulação: %.1f%%.", pct)
 	}
-	aiPct, elaPct := 0.0, 0.0
+
+	aiPct, elaPct, statPct := 0.0, 0.0, 0.0
 	if ai != nil {
 		aiPct = ai.Confidence * 100
 	}
 	if ela != nil {
 		elaPct = ela.Confidence * 100
 	}
+	if st != nil {
+		statPct = st.Confidence * 100
+	}
+
+	if aiPct > 0 {
+		return fmt.Sprintf(
+			"Imagem suspeita de manipulação/geração por IA (score %.1f%%). Modelo ONNX: %.0f%%. Análise estatística: %.0f%%. Evidências de edição: %.0f%%.",
+			pct, aiPct, statPct, elaPct,
+		)
+	}
 	return fmt.Sprintf(
-		"Imagem suspeita de manipulação (score %.1f%%). Detecção de IA: %.0f%%. Evidências de edição: %.0f%%.",
-		score*100, aiPct, elaPct,
+		"Imagem suspeita de geração por IA (score %.1f%%). Análise estatística: %.0f%%. Evidências de edição: %.0f%%.",
+		pct, statPct, elaPct,
 	)
 }
 
