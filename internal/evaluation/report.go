@@ -170,7 +170,7 @@ func PrintSummary(summary *EvalSummary, cm *ConfusionMatrix, cal *CalibrationRep
 	b := m.Binary
 
 	fmt.Println("═══════════════════════════════════════════════════════")
-	fmt.Println("              VERIFOOD — EVAL SUMMARY")
+	fmt.Println("              PixelAudit — EVAL SUMMARY")
 	fmt.Println("═══════════════════════════════════════════════════════")
 	fmt.Printf("Dataset:       %s\n", summary.Run.ManifestPath)
 	fmt.Printf("Imagens:       %d carregadas / %d total\n", summary.Run.LoadedImages, summary.Run.TotalSamples)
