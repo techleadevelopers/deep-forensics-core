@@ -5,7 +5,7 @@ package analyzer
 import (
 	"errors"
 
-	"github.com/verifood/verifood/internal/model"
+	"github.com/PixelAudit/PixelAudit/internal/model"
 )
 
 type AIDetector struct{}
