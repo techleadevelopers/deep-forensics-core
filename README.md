@@ -50,7 +50,7 @@ Resposta em ≤500ms (sync) ou `202 Accepted` (com `webhook_url`).
 
 ```bash
 go mod tidy
-export DATABASE_URL=postgres://verifood:verifood@localhost:5432/verifood?sslmode=disable
+export DATABASE_URL=postgres://PixelAudit:PixelAudit@localhost:5432/PixelAudit?sslmode=disable
 export REDIS_URL=redis://localhost:6379/0
 export NATS_URL=nats://localhost:4222
 export S3_ENDPOINT=http://localhost:9000
