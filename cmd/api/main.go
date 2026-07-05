@@ -14,15 +14,15 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"github.com/verifood/verifood/internal/analyzer"
-	"github.com/verifood/verifood/internal/api"
-	"github.com/verifood/verifood/internal/config"
-	"github.com/verifood/verifood/internal/orchestrator"
-	"github.com/verifood/verifood/internal/queue"
-	"github.com/verifood/verifood/internal/storage"
+	"github.com/PixelAudit/PixelAudit/internal/analyzer"
+	"github.com/PixelAudit/PixelAudit/internal/api"
+	"github.com/PixelAudit/PixelAudit/internal/config"
+	"github.com/PixelAudit/PixelAudit/internal/orchestrator"
+	"github.com/PixelAudit/PixelAudit/internal/queue"
+	"github.com/PixelAudit/PixelAudit/internal/storage"
 )
 
-// main é o entrypoint da API HTTP do VeriFood.
+// main é o entrypoint da API HTTP do PixelAudit.
 // Bootstrap: config → logger → storage → queue → analisadores → orchestrator → HTTP server.
 func main() {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
@@ -104,7 +104,7 @@ func main() {
 	}
 
 	go func() {
-		log.Info().Str("addr", srv.Addr).Msg("VeriFood API listening")
+		log.Info().Str("addr", srv.Addr).Msg("PixelAudit API listening")
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatal().Err(err).Msg("http server")
 		}
