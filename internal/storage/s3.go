@@ -9,7 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 
-	"github.com/verifood/verifood/internal/config"
+	"github.com/PixelAudit/PixelAudit/internal/config"
 )
 
 // S3 abstrai o cliente para S3/MinIO (compatível).
