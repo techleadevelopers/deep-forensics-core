@@ -4,9 +4,9 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: verifood
-      POSTGRES_PASSWORD: verifood
-      POSTGRES_DB: verifood
+      POSTGRES_USER: PixelAudit
+      POSTGRES_PASSWORD: PixelAudit
+      POSTGRES_DB: PixelAudit
     ports: ["5432:5432"]
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -37,8 +37,8 @@ services:
       /bin/sh -c "
         sleep 3;
         mc alias set local http://minio:9000 minioadmin minioadmin;
-        mc mb -p local/verifood-evidence || true;
-        mc anonymous set download local/verifood-evidence;
+        mc mb -p local/PixelAudit-evidence || true;
+        mc anonymous set download local/PixelAudit-evidence;
       "
 
   api:
@@ -47,11 +47,11 @@ services:
     environment:
       ENV: development
       PORT: "8080"
-      DATABASE_URL: postgres://verifood:verifood@postgres:5432/verifood?sslmode=disable
+      DATABASE_URL: postgres://PixelAudit:PixelAudit@postgres:5432/PixelAudit?sslmode=disable
       REDIS_URL: redis://redis:6379/0
       NATS_URL: nats://nats:4222
       S3_ENDPOINT: http://minio:9000
-      S3_BUCKET: verifood-evidence
+      S3_BUCKET: PixelAudit-evidence
       S3_ACCESS_KEY: minioadmin
       S3_SECRET_KEY: minioadmin
       S3_REGION: us-east-1
@@ -65,11 +65,11 @@ services:
     depends_on: [postgres, nats, minio]
     command: ["/app/worker"]
     environment:
-      DATABASE_URL: postgres://verifood:verifood@postgres:5432/verifood?sslmode=disable
+      DATABASE_URL: postgres://PixelAudit:PixelAudit@postgres:5432/PixelAudit?sslmode=disable
       REDIS_URL: redis://redis:6379/0
       NATS_URL: nats://nats:4222
       S3_ENDPOINT: http://minio:9000
-      S3_BUCKET: verifood-evidence
+      S3_BUCKET: PixelAudit-evidence
       S3_ACCESS_KEY: minioadmin
       S3_SECRET_KEY: minioadmin
       JWT_SECRET: dev-only-change-me
