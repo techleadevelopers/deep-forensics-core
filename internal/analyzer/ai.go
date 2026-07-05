@@ -11,7 +11,7 @@ import (
 
 	ort "github.com/yalue/onnxruntime_go"
 
-	"github.com/verifood/verifood/internal/model"
+	"github.com/PixelAudit/PixelAudit/internal/model"
 )
 
 // AIDetector executa inferência ONNX sobre uma CNN treinada para
