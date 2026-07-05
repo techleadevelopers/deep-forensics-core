@@ -12,12 +12,12 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"github.com/verifood/verifood/internal/analyzer"
-	"github.com/verifood/verifood/internal/config"
-	"github.com/verifood/verifood/internal/model"
-	"github.com/verifood/verifood/internal/orchestrator"
-	"github.com/verifood/verifood/internal/queue"
-	"github.com/verifood/verifood/internal/storage"
+	"github.com/PixelAudit/PixelAudit/internal/analyzer"
+	"github.com/PixelAudit/PixelAudit/internal/config"
+	"github.com/PixelAudit/PixelAudit/internal/model"
+	"github.com/PixelAudit/PixelAudit/internal/orchestrator"
+	"github.com/PixelAudit/PixelAudit/internal/queue"
+	"github.com/PixelAudit/PixelAudit/internal/storage"
 )
 
 func main() {
@@ -142,7 +142,7 @@ func main() {
 		}
 	}()
 
-	log.Info().Msg("VeriFood worker running")
+	log.Info().Msg("PixelAudit worker running")
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
