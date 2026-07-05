@@ -5,7 +5,7 @@ import (
 	"github.com/caarlos0/env/v11"
 )
 
-// Config agrega toda a configuração de runtime do VeriFood.
+// Config agrega toda a configuração de runtime do PixelAudit.
 // Todas as chaves são carregadas via variáveis de ambiente.
 type Config struct {
 	Env             string `env:"ENV" envDefault:"development"`
@@ -14,7 +14,7 @@ type Config struct {
 	RedisURL        string `env:"REDIS_URL,required"`
 	NATSURL         string `env:"NATS_URL,required"`
 	S3Endpoint      string `env:"S3_ENDPOINT"`
-	S3Bucket        string `env:"S3_BUCKET" envDefault:"verifood-evidence"`
+	S3Bucket        string `env:"S3_BUCKET" envDefault:"PixelAudit-evidence"`
 	S3AccessKey     string `env:"S3_ACCESS_KEY"`
 	S3SecretKey     string `env:"S3_SECRET_KEY"`
 	S3Region        string `env:"S3_REGION" envDefault:"us-east-1"`
