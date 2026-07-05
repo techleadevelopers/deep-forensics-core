@@ -73,6 +73,7 @@ func main() {
 	meta := analyzer.NewMetadataAnalyzer()
 	ela := analyzer.NewELAAnalyzer(0.06)
 	freq := analyzer.NewFrequencyAnalyzer()
+	stat := analyzer.NewStatisticalAnalyzer()
 	ai, err := analyzer.NewAIDetector(cfg.ONNXModelPath)
 	if err != nil {
 		log.Warn().Err(err).Msg("AI detector disabled")
@@ -83,6 +84,7 @@ func main() {
 		ela,
 		ai,
 		freq,
+		stat,
 		db,
 		s3,
 		redis,
