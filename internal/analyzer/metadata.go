@@ -1,4 +1,4 @@
-// Package analyzer contém os 4 analisadores forenses do VeriFood
+// Package analyzer contém os 4 analisadores forenses do PixelAudit
 // (metadata, ELA, IA/ONNX, frequência) e a lógica de score fusion.
 package analyzer
 
@@ -9,7 +9,7 @@ import (
 
 	exif "github.com/dsoprea/go-exif/v3"
 
-	"github.com/verifood/verifood/internal/model"
+	"github.com/PixelAudit/PixelAudit/internal/model"
 )
 
 // MetadataAnalyzer inspeciona EXIF/XMP/IPTC procurando por rastros de edição.
