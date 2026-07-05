@@ -1,4 +1,4 @@
-# VeriFood — Backend (Go)
+# PixelAudit — Backend (Go)
 
 API forense em Go + workers ONNX. Zero Python.
 
