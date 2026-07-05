@@ -1,4 +1,4 @@
-// Package api monta os handlers HTTP da API pública VeriFood.
+// Package api monta os handlers HTTP da API pública PixelAudit.
 package api
 
 import (
@@ -13,8 +13,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 
-	"github.com/verifood/verifood/internal/orchestrator"
-	"github.com/verifood/verifood/internal/storage"
+	"github.com/PixelAudit/PixelAudit/internal/orchestrator"
+	"github.com/PixelAudit/PixelAudit/internal/storage"
 )
 
 // RegisterRoutes registra todos os endpoints /v1/*.
@@ -211,7 +211,7 @@ func AuthMiddleware() gin.HandlerFunc {
 // problem responde no formato RFC 7807.
 func problem(c *gin.Context, status int, kind, detail string) {
 	c.JSON(status, gin.H{
-		"type":       "https://verifood.io/errors/" + kind,
+		"type":       "https://PixelAudit.io/errors/" + kind,
 		"title":      strings.ReplaceAll(kind, "-", " "),
 		"status":     status,
 		"detail":     detail,
