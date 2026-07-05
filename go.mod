@@ -1,4 +1,4 @@
-module github.com/verifood/verifood
+module github.com/PixelAudit/PixelAudit
 
 go 1.21
 
