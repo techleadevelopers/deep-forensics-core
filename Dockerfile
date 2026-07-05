@@ -29,7 +29,7 @@ ENV LD_LIBRARY_PATH=/opt/onnxruntime/lib
 WORKDIR /app
 COPY --from=builder /out/api    /app/api
 COPY --from=builder /out/worker /app/worker
-COPY model /internal/model
+RUN mkdir -p /app/models
 EXPOSE 8080
 ENV PORT=8080
 CMD ["/app/api"]
