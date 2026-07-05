@@ -26,8 +26,8 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/verifood/verifood/internal/dataset"
-	"github.com/verifood/verifood/internal/evaluation"
+	"github.com/PixelAudit/PixelAudit/internal/dataset"
+	"github.com/PixelAudit/PixelAudit/internal/evaluation"
 )
 
 func main() {
@@ -71,7 +71,7 @@ func run() error {
 		}
 	}
 
-	fmt.Println("VeriFood — Accuracy Evaluation Harness")
+	fmt.Println("PixelAudit — Accuracy Evaluation Harness")
 	fmt.Printf("Manifest:   %s\n", absManifest)
 	fmt.Printf("Reports:    %s\n", absReports)
 	fmt.Printf("Threshold:  %.1f\n", *threshold)
