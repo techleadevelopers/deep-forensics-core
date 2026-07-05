@@ -1,4 +1,4 @@
-# VeriFood — Architecture Document
+# PixelAudit — Architecture Document
 
 > Documento de arquitetura técnica de referência. Nível: **detalhado / engenharia**.
 > Última revisão: 2026-07-05. Owner: Platform Engineering.
@@ -27,7 +27,7 @@
 
 ## 1. Visão Geral e Princípios
 
-VeriFood é uma **plataforma de verificação forense de imagens como serviço**, projetada para:
+PixelAudit é uma **plataforma de verificação forense de imagens como serviço**, projetada para:
 
 - **Latência baixa e previsível** (p95 < 500ms) mesmo sob carga.
 - **Auditabilidade total**: toda decisão precisa ser reproduzível e explicável (heatmaps, scores parciais, versões de modelo).
@@ -70,10 +70,10 @@ VeriFood é uma **plataforma de verificação forense de imagens como serviço**
 
 ```text
 ┌────────────────────────────────────────────────────────────────┐
-│                     Ecossistema VeriFood                       │
+│                     Ecossistema PixelAudit                       │
 │                                                                │
 │  ┌──────────┐   REST/    ┌────────────┐   Webhooks  ┌────────┐ │
-│  │ Cliente  │──HTTPS────▶│  VeriFood  │────────────▶│Sistema │ │
+│  │ Cliente  │──HTTPS────▶│  PixelAudit  │────────────▶│Sistema │ │
 │  │ (iFood,  │            │  Platform  │             │Cliente │ │
 │  │  Uber…)  │◀───────────│            │             │(CRM…)  │ │
 │  └──────────┘  response  └─────┬──────┘             └────────┘ │
@@ -91,7 +91,7 @@ VeriFood é uma **plataforma de verificação forense de imagens como serviço**
 
 ```text
 ┌───────────────────────────────────────────────────────────────────┐
-│                        VeriFood Platform                          │
+│                        PixelAudit Platform                          │
 │                                                                   │
 │   ┌───────────────┐    ┌────────────────┐    ┌────────────────┐   │
 │   │ API Gateway   │───▶│ Verification   │───▶│ Score Fusion   │   │
@@ -197,7 +197,7 @@ Padrão: `MaxAckPending=100`, `AckWait=30s`, `MaxDeliver=3`, DLQ em `verify.<nam
 
 ### 4.5 Webhook Dispatcher
 
-- Assinatura HMAC-SHA256 do payload (`X-VeriFood-Signature: t=<ts>,v1=<sig>`).
+- Assinatura HMAC-SHA256 do payload (`X-PixelAudit-Signature: t=<ts>,v1=<sig>`).
 - Retry exponencial: `[5s, 30s, 2m, 10m, 1h, 6h, 24h]` (7 tentativas) via delayed queue.
 - Dead letter em `webhooks_failed` após 7 falhas; alerta operacional.
 
@@ -394,7 +394,7 @@ Formato padronizado (RFC 7807 Problem Details):
 
 ```json
 {
-  "type": "https://verifood.io/errors/invalid-image",
+  "type": "https://PixelAudit.io/errors/invalid-image",
   "title": "Invalid image",
   "status": 400,
   "detail": "Image MIME type application/pdf not supported",
@@ -466,7 +466,7 @@ func (o *Orchestrator) Verify(ctx context.Context, img []byte) (*Result, error) 
 ### 10.1 Topologia Kubernetes
 
 ```text
-Namespace: verifood-prod
+Namespace: PixelAudit-prod
 
 Deployments:
   api               (HPA: 2..20  | CPU 70%)
@@ -492,7 +492,7 @@ Service Mesh:
 ### 10.2 CI/CD
 
 - **CI**: GitHub Actions — lint (`golangci-lint`), test (`go test -race -cover`), build (`ko`), scan (`trivy`, `gosec`, `govulncheck`).
-- **CD**: Argo CD (GitOps) monitorando repo `verifood-manifests`.
+- **CD**: Argo CD (GitOps) monitorando repo `PixelAudit-manifests`.
 - **Estratégia**: canary 10% → 50% → 100% com análise automática via Flagger (SLO error rate, latência).
 
 ### 10.3 Ambientes
@@ -519,12 +519,12 @@ Prometheus scraping. Métricas-chave:
 
 | Métrica | Tipo | Labels |
 |---------|------|--------|
-| `verifood_verify_duration_seconds` | Histogram | tenant, status |
-| `verifood_verify_score` | Histogram | tenant, recommendation |
-| `verifood_worker_queue_depth` | Gauge | worker |
-| `verifood_ai_inference_duration_seconds` | Histogram | model_version |
-| `verifood_webhook_delivery_total` | Counter | status |
-| `verifood_ratelimit_rejections_total` | Counter | tenant |
+| `PixelAudit_verify_duration_seconds` | Histogram | tenant, status |
+| `PixelAudit_verify_score` | Histogram | tenant, recommendation |
+| `PixelAudit_worker_queue_depth` | Gauge | worker |
+| `PixelAudit_ai_inference_duration_seconds` | Histogram | model_version |
+| `PixelAudit_webhook_delivery_total` | Counter | status |
+| `PixelAudit_ratelimit_rejections_total` | Counter | tenant |
 
 ### 11.3 Logs
 
