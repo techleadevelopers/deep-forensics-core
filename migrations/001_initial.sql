@@ -1,4 +1,4 @@
--- VeriFood — schema inicial
+-- PixelAudit — schema inicial
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
