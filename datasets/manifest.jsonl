@@ -1,4 +1,4 @@
-# manifest.jsonl — dataset de avaliação VeriFood
+# manifest.jsonl — dataset de avaliação PixelAudit
 # Formato: uma linha JSON por imagem.
 # Campos obrigatórios: path (relativo a este arquivo), label, category
 # Labels válidos: authentic | manipulated | ai_generated | partial
