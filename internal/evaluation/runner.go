@@ -252,7 +252,7 @@ func (r *Runner) runOne(s dataset.Sample) PredictionResult {
 		}
 	}
 
-	res := r.fusion.Combine(b.m, b.e, b.a, b.f)
+	res := r.fusion.Combine(b.m, b.e, b.a, b.f, nil)
 	res.ProcessingTimeMs = int(latencyMs)
 
 	// Score: Confidence já é 0–100 no VerificationResult
