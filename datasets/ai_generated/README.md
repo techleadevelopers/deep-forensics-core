@@ -15,7 +15,7 @@ Label sempre `ai_generated`.
 
 ## Prompts sugeridos para geração
 
-Use prompts voltados a alimentos (contexto do VeriFood):
+Use prompts voltados a alimentos (contexto do PixelAudit):
 
 ```
 food photography, restaurant dish, professional lighting, RAW photo,
