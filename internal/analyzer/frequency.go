@@ -9,7 +9,7 @@ import (
 
 	"gonum.org/v1/gonum/dsp/fourier"
 
-	"github.com/verifood/verifood/internal/model"
+	"github.com/PixelAudit/PixelAudit/internal/model"
 )
 
 // FrequencyAnalyzer aplica FFT 2D e mede o desbalanceamento entre bandas
